@@ -13,6 +13,7 @@ import os
 import yaml
 import models
 import torch
+import pickle
 
 from sklearn.metrics import roc_curve, auc
 from optparse import OptionParser
@@ -33,9 +34,7 @@ if __name__ == "__main__":
 
     yamlConfig = parse_config(options.config)
 
-    if os.path.isdir(options.outputDir):
-        os.removedirs(options.outputDir)
-    else:
+    if not os.path.isdir(options.outputDir):
         os.mkdir(options.outputDir)
 
     ## Getting the train and test sample
@@ -83,6 +82,12 @@ if __name__ == "__main__":
             Optimizer.zero_grad()
             loss.backward()
             Optimizer.step()
+
+    # Save the model
+    with open("%s/dict.plk" % options.outputDir, 'wb') as outfile:
+        torch.save(model.state_dict(), outfile)
+    with open("%s/model.plk" % options.outputDir, 'wb') as outfile:
+        pickle.dump(model, outfile)
 
 #============================================================================#
 #--------------------------     Test The Model     --------------------------#
