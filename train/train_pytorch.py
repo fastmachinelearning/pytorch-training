@@ -19,7 +19,7 @@ from optparse import OptionParser
 from torch import nn
 from torch.autograd import Variable
 from Data_loader import get_features, parse_config
-from Data_loader import numpy_toVar, TorchDataset
+from Data_loader import tensor_toVar, numpy_toVar, TorchDataset
 
 if __name__ == "__main__":
     parser = OptionParser()
@@ -47,38 +47,55 @@ if __name__ == "__main__":
     if not options.noCUDA and torch.cuda.is_available():
         model.cuda()
 
-    ## Convert Numpy to tensor
-    X_train = numpy_toVar(X_train_val)
-    Y_train = numpy_toVar(Y_train_val, grad=False )
-
-    # dataset = TorchDataset(X_train_val, Y_train_val)
-    # data_loader = torch.utils.data.DataLoader(dataset=dataset,
-                                              # batch_size=-1,
-                                              # shuffle=False,
-                                              # num_workers=1)
-
-    # print("not in GPU?")
-
     ## Define loss and optimizer
     learning_rate=0.01
+    # Nepoch = 6
+    Nepoch = 600
     loss_fn = nn.BCELoss(size_average=False)
     Optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate)
+    RunWithDataLoader=False
 
-    for epoch in range(600):
-        y_pred = model(X_train)
-        loss = loss_fn(y_pred, Y_train)
-        print(epoch, loss.data[0])
-        Optimizer.zero_grad()
-        loss.backward()
-        Optimizer.step()
+    if RunWithDataLoader:
+        dataset = TorchDataset(X_train_val, Y_train_val)
+        data_loader = torch.utils.data.DataLoader(dataset=dataset,
+                                                  batch_size=1028,
+                                                  shuffle=False,
+                                                  pin_memory=True,
+                                                  num_workers=1)
+        for epoch in range(Nepoch):
+            for batch_number, (X_train, Y_train) in enumerate(data_loader):
+                X_train = tensor_toVar(X_train)
+                Y_train = tensor_toVar(Y_train, False)
+                y_pred = model(X_train)
+                loss = loss_fn(y_pred, Y_train)
+                print(epoch, batch_number, loss.data[0])
+                Optimizer.zero_grad()
+                loss.backward()
+                Optimizer.step()
+    else:
+        # Convert Numpy to tensor
+        X_train = numpy_toVar(X_train_val)
+        Y_train = numpy_toVar(Y_train_val, grad=False )
+        for epoch in range(Nepoch):
+            y_pred = model(X_train)
+            loss = loss_fn(y_pred, Y_train)
+            print(epoch, loss.data[0])
+            Optimizer.zero_grad()
+            loss.backward()
+            Optimizer.step()
 
 #============================================================================#
 #--------------------------     Test The Model     --------------------------#
 #============================================================================#
     X_test = numpy_toVar(X_test_val)
     Y_test = numpy_toVar(Y_test_val)
-    output = model(X_test)
-    dfpr, dtpr, dthreshold = roc_curve(Y_test.data.cpu().numpy(), output.data.cpu().numpy())
-    dauc = auc(dfpr, dtpr)
-    dfpr, dtpr, dthreshold = roc_curve(Y_train.data.cpu().numpy(), model(X_train).data.cpu().numpy())
-    print (auc(dfpr, dtpr), dauc)
+    output = model(X_test).data.cpu().numpy()
+    Noutputs = Y_test.shape[1]
+    output_train= model(X_train).data.cpu().numpy()
+
+    for i in range(Noutputs):
+        dfpr, dtpr, dthreshold = roc_curve(Y_test_val[:, i], output[:, i])
+        test_auc = auc(dfpr, dtpr)
+        tfpr, ttpr, tthreshold = roc_curve(Y_train_val[:,i], output_train[:,i])
+        train_auc = auc(tfpr, ttpr)
+        print("Tag %d, test AUC %f, train AUC %f " % (i, test_auc, train_auc))

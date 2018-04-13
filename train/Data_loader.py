@@ -105,18 +105,21 @@ def parse_config(config_file) :
     config = open(config_file, 'r')
     return yaml.load(config)
 
-def numpy_toVar(npval, grad=True):
-    val_tensor = torch.from_numpy(npval)
-    val_tensor = val_tensor.float()
+def tensor_toVar(npval, grad=True):
+    val_tensor = npval.float()
     if torch.cuda.is_available():
         val_tensor = val_tensor.cuda()
     return Variable(val_tensor, requires_grad=grad)
 
+def numpy_toVar(npval, grad=True):
+    val_tensor = torch.from_numpy(npval)
+    return tensor_toVar(val_tensor, grad)
+
 class TorchDataset(Dataset):
     def __init__(self, X_train, Y_train, transform=None ):
         super().__init__()
-        self.xtrain = numpy_toVar(X_train)
-        self.ytrain = numpy_toVar(Y_train)
+        self.xtrain = X_train
+        self.ytrain = Y_train
         self.transform = transform
 
     def __len__(self):
@@ -131,6 +134,4 @@ class TorchDataset(Dataset):
             ytrain = self.transform(ytrain)
 
         return xtrain, ytrain
-
-
 
