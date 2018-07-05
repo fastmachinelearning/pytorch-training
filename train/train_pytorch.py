@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # encoding: utf-8
 
 # File        : train_pytorch.py
@@ -11,9 +11,12 @@
 import sys
 import os
 import yaml
-import models
 import torch
 import pickle
+
+filedir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0,os.path.join(filedir, "..", "models"))
+import models
 
 from sklearn.metrics import roc_curve, auc
 from optparse import OptionParser
@@ -84,10 +87,7 @@ if __name__ == "__main__":
             Optimizer.step()
 
     # Save the model
-    with open("%s/dict.plk" % options.outputDir, 'wb') as outfile:
-        torch.save(model.state_dict(), outfile)
-    with open("%s/model.plk" % options.outputDir, 'wb') as outfile:
-        pickle.dump(model, outfile)
+    torch.save(model, "%s/%s.pt" % (options.outputDir, yamlConfig['KerasModel']))
 
 #============================================================================#
 #--------------------------     Test The Model     --------------------------#
