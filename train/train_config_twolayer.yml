@@ -19,3 +19,4 @@ KerasLoss: binary_crossentropy
 L1Reg: 0
 NormalizeInputs: 1
 ConvInputs: 0
+InputType: Dense
